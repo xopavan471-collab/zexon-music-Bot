@@ -1,122 +1,114 @@
 import os
-import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import yt_dlp
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
+from yt_dlp import YoutubeDL
 
-# Yahan apna Telegram Bot Token dalein
-TOKEN = "8986816218:AAF42YtS6GZl_uu6LDIGg65isdpMJfyItdY"
+TOKEN = ("8986816218:AAF9eTDjk8wHeMgvvSpUNgmdRqWl35cCCFs")
 
-# Start Command
+# --- START MESSAGE - Tere screenshot jaisa ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
-    welcome_text = (
-        f"<b>𝐇ᴇʟʟᴏ {user_name} </b>✨\n\n"
-        " 𝐈 ᴀᴍ <b>ᴀʟʟ ɪɴ ᴏɴᴇ ᴍᴜꜱɪᴄ ᴛʜᴜᴍʙɴᴀɪʟ ᴅᴏᴡɴʟᴏᴀᴅᴇʀ</b> ʙᴏᴛ✨\n\n"
-        " Mujhe kisi bhi <b>ʏᴏᴜ ᴛᴜʙᴇ ɪɴꜱᴛᴀɢʀᴀᴍ ꜰᴀᴄᴇʙᴏᴏᴋ ᴛᴡɪᴛᴛᴇʀ</b> ꜱᴏꜰᴛᴏɴɪᴄ\n"
-        "• ʏᴏᴜ ᴛᴜʙᴇ ꜰᴏʀ <b>ᴛʜᴜᴍʙɴᴀɪʟ + ᴍᴘ ᴀᴜᴅɪᴏ</b> milega.\n"
-        "• ᴀʟʟ ᴘʟᴀᴛꜰᴏʀᴍꜱ ꜰᴏʀ ᴍᴘ ᴀᴜᴅɪᴏ ᴅᴏᴡɴʟᴏᴀᴅ</b> ꜰᴀꜱᴛ."
+    text = (
+        f"Welcome, {user_name.upper()} !!\n\n"
+        "Type a song name, artist, or even lyrics — I'll find and send it.\n\n"
+        "You can also send a voice message with music for recognition.\n\n"
+        "/legal — Legal info & copyright\n\n"
+        "Bot created with\n"
+        "@zexon_x"
     )
-    
-    keyboard = [[InlineKeyboardButton("ᴜᴘᴅᴀᴛᴇꜱ", url="https://t.me/zexon_Bot_updates")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(welcome_text, parse_mode="HTML", reply_markup=reply_markup)
+    keyboard = [
+        [
+            InlineKeyboardButton("ᴜᴘᴅᴀᴛᴇꜱ", callback_data="daily_top"),
+            InlineKeyboardButton("ᴀʙᴏᴜᴛ", callback_data="top_100")
+        ],
+        [
+            InlineKeyboardButton("ʜᴇʟᴘ", callback_data="ai_music")
+        ]
+    ]
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-# Progress Hook Function
-def progress_hook(d):
-    if d['status'] == 'downloading':
-        p = d.get('_percent_str', '0%').strip()
-        # Yahan aap progress dekh sakte hain agar terminal par print karna ho
+async def legal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("This bot is for educational purpose only. All copyrights belong to respective owners.")
 
-# Link Handler (Download Audio & Thumbnail)
+# --- Link bhejne par Music/Thumbnail ka option ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
-    
-    # Check karein ki ye koi link hai ya nahi
-    if not (url.startswith("http://") or url.startswith("https://")):
-        await update.message.reply_text(" Link not Found ❌")
+    if not url.startswith("http"):
+        await update.message.reply_text("Send you tube Link ❌")
         return
 
-    msg = await update.message.reply_text("𝐏ʀᴏɢʀᴇꜱꜱ ᴅᴏᴡɴʟᴏᴀᴅɪɴɢ...🔗\n■■■□□□□□□□ 30%")
+    context.user_data['last_url'] = url
+    keyboard = [
+        [InlineKeyboardButton("𝐌𝐮𝐬𝐢𝐜 🎵", callback_data="music")],
+        [InlineKeyboardButton("𝐓𝐡𝐮𝐦𝐛𝐧𝐚𝐢𝐥 🖼️", callback_data="thumb")]
+    ]
+    await update.message.reply_text("What do you want to Download 👇", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    audio_file = None
-    thumbnail_file = None
+# --- Saare Buttons ka kaam ---
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    url = context.user_data.get('last_url')
+    choice = query.data
+
+    # Start wale 3 buttons
+    if choice == "daily_top":
+        await query.edit_message_text("Click Here: https://t.me/zexon_Bot_updates)
+        return
+    if choice == "top_100":
+        await query.edit_message_text("name: zexon music Bot")
+        return
+    if choice == "ai_music":
+        await query.edit_message_text("Help For Contact: @zexon_x")
+        return
+
+    if not url:
+        await query.edit_message_text("Please send Link !")
+        return
 
     try:
-        # 1. YouTube ke liye Thumbnail aur Audio dono download karne ki setting
-        if "youtube.com" in url or "youtu.be" in url:
-            ydl_opts_thumb = {
-                'skip_download': True,
-                'writethumbnail': True,
-                'outtmpl': 'downloads/%(id)s',
-            }
-            with yt_dlp.YoutubeDL(ydl_opts_thumb) as ydl:
+        if choice == "thumb":
+            await query.edit_message_text("Thumbnail Downloading... ⚙️")
+            ydl_opts = {'skip_download': True, 'quiet': True}
+            with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                thumbnail_url = info.get('thumbnail')
-                if thumbnail_url:
-                    thumbnail_file = thumbnail_url
+                thumb_url = info.get('thumbnail')
+                title = info.get('title', 'Thumbnail')
+            await context.bot.send_photo(chat_id=query.message.chat_id, photo=thumb_url, caption=f"📸 {title}")
+            await query.delete_message()
 
-        await msg.edit_text("𝐀ᴜᴅɪᴏ ᴅᴏᴡɴʟᴏᴀᴅɪɴɢ...⚙️\n■■■■■■□□□□ 60%")
-
-        # 2. Sabhi platforms ke liye Audio (MP3) extraction options
-        ydl_opts_audio = {
-            'format': 'bestaudio/best',
-            'outtmpl': 'downloads/%(id)s.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'progress_hook': progress_hook,
-        }
-
-        os.makedirs("downloads", exist_ok=True)
-
-        # Download Audio
-        with yt_dlp.YoutubeDL(ydl_opts_audio) as ydl:
-            info = ydl.extract_info(url, download=True)
-            audio_file = ydl.prepare_filename(info)
-            audio_file = os.path.splitext(audio_file)[0] + ".mp3"
-
-        await msg.edit_text("ᴀᴜᴅɪᴏ ᴜᴘʟᴏᴀᴅɪɴɢ...⚡\n■■■■■■■■■■ 100%")
-
-        # 3. Telegram par bhejna
-        # Agar thumbnail hai (YouTube ka case), toh pehle thumbnail bhejein
-        if thumbnail_file and ("youtube.com" in url or "youtu.be" in url):
-            await update.message.reply_photo(
-                photo=thumbnail_file, 
-                caption="🖼 <b>ʏᴏᴜ ᴛᴜʙᴇ ᴠɪᴅᴇᴏ ᴛʜᴜᴍʙɴᴀɪʟ</b>", 
-                parse_mode="HTML"
-            )
-
-        # Audio file bhejein
-        if audio_file and os.path.exists(audio_file):
-            with open(audio_file, 'rb') as audio:
-                await update.message.reply_audio(
-                    audio=audio, 
-                    caption="✨ Downloaded by Your Bot",
-                    performer="Music Downloader Bot"
-                )
-            os.remove(audio_file) # Server clean rakhne ke liye file delete karein
-
-        await msg.delete()
+        elif choice == "music":
+            await query.edit_message_text("Music downloading...⚙️)
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'outtmpl': 'downloads/%(title)s.%(ext)s',
+                'postprocessors': [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192'}],
+                'quiet': True
+            }
+            os.makedirs("downloads", exist_ok=True)
+            with YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                audio_file = ydl.prepare_filename(info)
+                audio_file = os.path.splitext(audio_file)[0] + ".mp3"
+            with open(audio_file, 'rb') as f:
+                await context.bot.send_audio(chat_id=query.message.chat_id, audio=f, title=info.get('title'))
+            os.remove(audio_file)
+            await query.delete_message()
 
     except Exception as e:
-        await msg.edit_text(f"❌ Kuch gadbadi ho gayi:\n<code>{str(e)}</code>", parse_mode="HTML")
-        # Cleanup agar koi file bachi ho
-        if audio_file and os.path.exists(audio_file):
-            os.remove(audio_file)
+        await query.edit_message_text(f"Failed ❌\n{e}")
 
 def main():
+    if not TOKEN:
+        print("BOT_TOKEN nahi mila!")
+        return
     app = Application.builder().token(TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("legal", legal))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    print("🤖 Bot start ho gaya hai...")
+    app.add_handler(CallbackQueryHandler(button_click))
+    print("Bot Started!")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
-              
