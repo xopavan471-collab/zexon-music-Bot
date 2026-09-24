@@ -3,104 +3,85 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from yt_dlp import YoutubeDL
 
-TOKEN = ("8986816218:AAF9eTDjk8wHeMgvvSpUNgmdRqWl35cCCFs")
+TOKEN = "8986816218:AAF9eTDjk8wHeMgvvSpUNgmdRqWl35cCCFs"
 
-# --- START MESSAGE - Tere screenshot jaisa ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_name = update.effective_user.first_name
     text = (
-        f"Welcome, {user_name.upper()} !!\n\n"
-        "Type a song name, artist, or even lyrics — I'll find and send it.\n\n"
-        "You can also send a voice message with music for recognition.\n\n"
-        "/legal — Legal info & copyright\n\n"
-        "Bot created with\n"
-        "@zexon_x"
+        f" **Hi, {update.effective_user.first_name.upper()}**✨\n\n"
+        f" ****Welcome to You tube Instagram Facebook Music thumbnail Download Bot\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f" How to use Read this\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Send the YouTube Instagram Facebook Link send me Here\n"
+        f"then Music And Thumbnail select Anyone then Get your instantly music and thumbnail\n"
+        f"Please Share And Give Support.\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+
     )
     keyboard = [
-        [
-            InlineKeyboardButton("ᴜᴘᴅᴀᴛᴇꜱ", callback_data="daily_top"),
-            InlineKeyboardButton("ᴀʙᴏᴜᴛ", callback_data="top_100")
-        ],
-        [
-            InlineKeyboardButton("ʜᴇʟᴘ", callback_data="ai_music")
-        ]
+        [InlineKeyboardButton(" Music 🎵", callback_data="daily_top"),
+         InlineKeyboardButton("thumbnail 🎬", callback_data="top_100")],
+        [InlineKeyboardButton("About ✨", callback_data="ai_music")]
     ]
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def legal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("This bot is for educational purpose only. All copyrights belong to respective owners.")
+    await update.message.reply_text("For educational purpose only.\nJoin: https://t.me/zexon_Bot_updates")
 
-# --- Link bhejne par Music/Thumbnail ka option ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
-    if not url.startswith("http"):
-        await update.message.reply_text("Send you tube Link ❌")
+    if "http" not in url:
+        await update.message.reply_text("Send only you tube Instagram Facebook Link ✅")
         return
-
     context.user_data['last_url'] = url
     keyboard = [
-        [InlineKeyboardButton("𝐌𝐮𝐬𝐢𝐜 🎵", callback_data="music")],
-        [InlineKeyboardButton("𝐓𝐡𝐮𝐦𝐛𝐧𝐚𝐢𝐥 🖼️", callback_data="thumb")]
+        [InlineKeyboardButton("Music 🎵", callback_data="music")],
+        [InlineKeyboardButton("Thumbnail 🖼️", callback_data="thumb")]
     ]
-    await update.message.reply_text("What do you want to Download 👇", reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text("What Do You want to Download 👇", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# --- Saare Buttons ka kaam ---
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     url = context.user_data.get('last_url')
     choice = query.data
 
-    # Start wale 3 buttons
-    if choice == "daily_top":
-        await query.edit_message_text("Click Here: https://t.me/zexon_Bot_updates)
-        return
-    if choice == "top_100":
-        await query.edit_message_text("name: zexon music Bot")
-        return
-    if choice == "ai_music":
-        await query.edit_message_text("Help For Contact: @zexon_x")
-        return
-
-    if not url:
-        await query.edit_message_text("Please send Link !")
+    if choice in ["daily_top", "top_100", "ai_music"]:
+        await query.edit_message_text("this Feature is Not Available And Join this Channel.\n\nJoin: https://t.me/zexon_Bot_updates")
         return
 
     try:
         if choice == "thumb":
-            await query.edit_message_text("Thumbnail Downloading... ⚙️")
-            ydl_opts = {'skip_download': True, 'quiet': True}
-            with YoutubeDL(ydl_opts) as ydl:
+            await query.edit_message_text("Downloading...⏳")
+            with YoutubeDL({'skip_download': True, 'quiet': True}) as ydl:
                 info = ydl.extract_info(url, download=False)
-                thumb_url = info.get('thumbnail')
-                title = info.get('title', 'Thumbnail')
-            await context.bot.send_photo(chat_id=query.message.chat_id, photo=thumb_url, caption=f"📸 {title}")
-            await query.delete_message()
+                await context.bot.send_photo(chat_id=query.message.chat_id, photo=info.get('thumbnail'), caption=info.get('title'))
+            await query.edit_message_text("Here is the ✅")
 
         elif choice == "music":
-            await query.edit_message_text("Music downloading...⚙️)
-            ydl_opts = {
+            await query.edit_message_text("Music download ho raha hai... 🎵")
+            os.makedirs("downloads", exist_ok=True)
+            opts = {
                 'format': 'bestaudio/best',
                 'outtmpl': 'downloads/%(title)s.%(ext)s',
                 'postprocessors': [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192'}],
                 'quiet': True
             }
-            os.makedirs("downloads", exist_ok=True)
-            with YoutubeDL(ydl_opts) as ydl:
+            with YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                audio_file = ydl.prepare_filename(info)
-                audio_file = os.path.splitext(audio_file)[0] + ".mp3"
+                audio_file = ydl.prepare_filename(info).rsplit('.', 1)[0] + ".mp3"
+
             with open(audio_file, 'rb') as f:
                 await context.bot.send_audio(chat_id=query.message.chat_id, audio=f, title=info.get('title'))
             os.remove(audio_file)
-            await query.delete_message()
+            await query.edit_message_text("Here is the ✅")
 
     except Exception as e:
-        await query.edit_message_text(f"Failed ❌\n{e}")
+        await query.edit_message_text(f"Fail ho gaya ❌ {e}")
 
 def main():
     if not TOKEN:
-        print("BOT_TOKEN nahi mila!")
+        print("BOT_TOKEN nahi mila! export BOT_TOKEN karke chalao")
         return
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
