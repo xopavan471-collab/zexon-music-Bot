@@ -1,6 +1,4 @@
-yt-dlp
-pyrogram
-tgcrypto
-requests
-flask
 httpx
+yt-dlp
+Flask
+requests
