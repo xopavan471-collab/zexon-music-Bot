@@ -1,5 +1,3 @@
-yt-dlp
-pyrogram
-tgcrypto
-requests
-flask
+httpx>=0.28.1
+yt-dlp>=2026.8.19
+yt-dlp-ejs>=0.8.0
