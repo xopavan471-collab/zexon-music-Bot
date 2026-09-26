@@ -160,6 +160,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'quiet': True, 
             'noplaylist': True,
             'nocheckcertificate': True,
+            'cookiefile':'cookies.txt',
             'geo_bypass': True,
             'extractor_args': {
                 'facebook': {'legacy': []},
