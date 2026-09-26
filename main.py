@@ -136,7 +136,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         while True:
             try:
                 current_p = prog_data['p']
-                if current_p != last_p:
+                if current_p!= last_p:
                     await query.edit_message_text(f"Downloading...⏳ {current_p} %")
                     last_p = current_p
             except BadRequest as e:
@@ -151,39 +151,41 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     thumb_path = None
 
     try:
-        # YouTube aur any platforms ke liye updated anti-block options
+        # ===== PERFECT FIX - ONLY MUSIC & THUMBNAIL FOR YOUTUBE =====
+        cookie = "cookies.txt" if os.path.exists("cookies.txt") else None
+
         opts = {
             'outtmpl': 'downloads/%(id)s.%(ext)s',
             'writethumbnail': True,
             'skip_download': is_thumbnail_only,
             'progress_hooks': [hook],
-            'quiet': True, 
+            'quiet': True,
             'noplaylist': True,
             'nocheckcertificate': True,
-            'cookiefile':'cookies.txt',
+            'cookiefile': cookie,
             'geo_bypass': True,
             'extractor_args': {
                 'facebook': {'legacy': []},
-                'youtube': {'player_client': ['ios', 'web', 'android']}
+                'youtube': {'player_client': ['android', 'ios', 'web']}
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Sec-Fetch-Mode': 'navigate',
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
             }
         }
 
         if is_audio_only:
-            opts['format'] = 'bestaudio/best'
+            # JAD SE FIX: Kabhi bhi format error nahi dega
+            opts['format'] = 'bestaudio[ext=m4a]/bestaudio/best'
+            opts['format_sort'] = ['abr', 'ext:m4a:m4a']
             opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }]
         else:
-            opts['format'] = 'bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bestaudio/best'
-            opts['merge_output_format'] = 'mp4'
+            # Thumbnail ke liye bhi format chahiye hota hai
+            opts['format'] = 'bestaudio/best'
+            opts['format_sort'] = ['res', 'ext:mp4:m4a']
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=not is_thumbnail_only)
@@ -194,7 +196,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     base_name, _ = os.path.splitext(file_path)
                     file_path = base_name + '.mp3'
 
-            # 1st Method: Check local downloaded thumbnail files
             base = os.path.splitext(file_path)[0] if file_path else "downloads/temp"
             for ext in ['.webp','.jpg','.jpeg','.png']:
                 potential_thumb = base + ext
@@ -206,7 +207,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 thumbs = glob.glob("downloads/*.webp") + glob.glob("downloads/*.jpg") + glob.glob("downloads/*.png")
                 if thumbs: thumb_path = sorted(thumbs, key=os.path.getctime, reverse=True)[0]
 
-            # 2nd Method (Fallback): If yt-dlp didn't save thumbnail file, download it from info URL
             if not thumb_path and info:
                 thumb_url = info.get('thumbnail')
                 if thumb_url:
@@ -230,7 +230,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except BadRequest: pass
         return
 
-    # Agar user ne Thumbnail manga ho
     if is_thumbnail_only:
         try: await query.message.delete()
         except: pass
@@ -271,7 +270,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: os.remove(f)
             except: pass
 
-# Custom request settings with increased timeouts for hosting panels
 request = HTTPXRequest(
     connection_pool_size=8,
     read_timeout=30.0,
@@ -286,4 +284,3 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
 app.add_handler(CallbackQueryHandler(button_callback))
 print("ZEXON BOT - Audio/Thumbnail & Auto Delete Progress ON")
 app.run_polling()
-        
